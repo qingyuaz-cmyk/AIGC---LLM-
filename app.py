@@ -506,11 +506,11 @@ with tab4:
     col_l, col_r = st.columns([3, 2])
 
     with col_l:
-        st.markdown("**主播特征（留空则不限制该维度）**")
+        st.markdown("**主播特征（必填）**")
         c1, c2, c3 = st.columns(3)
-        filter_region  = c1.text_input("国家/地域", placeholder="如：欧美、中国大陆")
-        filter_style   = c2.text_input("风格标签",  placeholder="如：才艺,优雅")
-        filter_content = c3.text_input("内容类型",  placeholder="如：才艺展示,音乐表演")
+        filter_region  = c1.text_input("国家/地域 *", placeholder="如：欧美、中国大陆")
+        filter_style   = c2.text_input("风格标签 *",  placeholder="如：才艺,优雅")
+        filter_content = c3.text_input("内容类型 *",  placeholder="如：才艺展示,音乐表演")
 
         live_type = st.text_area(
             "本场直播看点内容",
@@ -534,8 +534,21 @@ with tab4:
     st.markdown("---")
     st.markdown("#### Step 2 · 生成二创方案")
 
-    if st.button("生成二创脚本", type="primary", key="gen_script",
-                 disabled=not (frame_file and video_file)):
+    _fields_ok = all([
+        filter_region.strip(), filter_style.strip(), filter_content.strip(),
+        live_type.strip(), frame_file, video_file,
+    ])
+    if not _fields_ok:
+        _missing = []
+        if not filter_region.strip():  _missing.append("国家/地域")
+        if not filter_style.strip():   _missing.append("风格标签")
+        if not filter_content.strip(): _missing.append("内容类型")
+        if not live_type.strip():      _missing.append("本场直播看点内容")
+        if not frame_file:             _missing.append("主播抽帧画面")
+        if not video_file:             _missing.append("主播原始看点视频")
+        st.warning(f"请填写/上传以下必填项：{'、'.join(_missing)}")
+
+    if st.button("生成二创脚本", type="primary", key="gen_script", disabled=not _fields_ok):
 
         # 每次点击都清空上次结果，强制重新匹配+重新调用 Gemini
         for _k in ("creator_script_raw", "creator_video_path", "creator_n_segments"):
