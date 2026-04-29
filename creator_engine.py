@@ -302,19 +302,27 @@ def parse_script_json(raw: str) -> dict:
 
 def _stylize_segment(video_path: str) -> str:
     """
-    对视频施加轻度风格化滤镜，降低人脸检测置信度以绕过 SeedAnce 真人审核。
-    策略：降饱和度 + 轻微锐化边缘 + 微量噪点 → 皮肤色调偏移，AI 仍能理解场景。
+    强力风格化：让 SeedAnce 人脸检测置信度低于阈值。
+    策略组合：
+      1. hqdn3d     - 时域+空域平滑，消除皮肤毛孔/纹理细节
+      2. colorbalance - 整体向冷蓝色调偏移（自然肤色是暖色，偏冷后识别率下降）
+      3. eq          - 强降饱和度 + 提对比，皮肤色进一步失真
+      4. unsharp     - 强边缘锐化，整体视觉趋向插画/绘画质感
+      5. noise       - 高强度随机噪点，破坏皮肤均匀纹理
     """
     out_name = f"stylized_{os.path.basename(video_path)}"
     out_path = os.path.join(TEMP_DIR, out_name)
     if os.path.exists(out_path):
         return out_path
 
-    # eq: 降饱和(皮肤色失真) + 微提亮对比
-    # unsharp: 边缘锐化 → 类绘画/插画质感
-    # noise: 随机噪点打破皮肤细腻纹理
-    vf = "eq=saturation=0.55:contrast=1.15:brightness=0.04,unsharp=5:5:1.2:5:5:0.0,noise=alls=12:allf=t+u"
-    result = subprocess.run(
+    vf = (
+        "hqdn3d=8:8:6:6,"
+        "colorbalance=rs=-0.25:gs=0.0:bs=0.35,"
+        "eq=saturation=0.30:contrast=1.35:brightness=0.03,"
+        "unsharp=9:9:2.5:9:9:0.0,"
+        "noise=alls=28:allf=t+u"
+    )
+    subprocess.run(
         ["ffmpeg", "-i", video_path,
          "-vf", vf,
          "-vcodec", "libx264", "-b:v", "2000k",
