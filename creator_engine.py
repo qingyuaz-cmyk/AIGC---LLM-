@@ -42,17 +42,21 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 #  1. DB 筛选
 # ─────────────────────────────────────────────
 
-def _extract_terms(text: str) -> list:
-    """提取长度≥2的有效词条（适配中文逗号/空格/顿号分隔）"""
-    return [t.strip() for t in re.split(r"[,，\s、。！？\|]+", text.lower()) if len(t.strip()) >= 2]
+def _bigrams(text: str) -> set:
+    """把文本拆成所有连续双字组，去掉标点和空格。适合中文相似度计算。"""
+    cleaned = re.sub(r"[,，\s、。！？\|【】（）()\-_]+", "", text.lower())
+    return {cleaned[i:i+2] for i in range(len(cleaned) - 1)} if len(cleaned) >= 2 else set()
 
 
-def _substring_score(row_val: str, terms: list) -> float:
-    """用子串匹配代替精确词匹配：'才艺'能命中'才艺展示'，'欧美'能命中'欧美市场'"""
-    if not terms or not row_val:
+def _bigram_score(row_val: str, query: str) -> float:
+    """query 的 bigram 中有多少出现在 row_val 里，支持部分匹配，不要求完整短语命中。"""
+    if not query.strip() or not row_val.strip():
         return 0.0
-    row_lower = row_val.lower()
-    return sum(1 for t in terms if t in row_lower) / len(terms)
+    q_bg = _bigrams(query)
+    r_bg = _bigrams(row_val)
+    if not q_bg:
+        return 0.0
+    return len(q_bg & r_bg) / len(q_bg)
 
 
 def filter_db_records(
@@ -68,11 +72,6 @@ def filter_db_records(
     ).fetchall()
     conn.close()
 
-    region_terms  = _extract_terms(country_region)
-    style_terms   = _extract_terms(style_tags)
-    content_terms = _extract_terms(content_tags)
-    live_terms    = _extract_terms(live_type)
-
     results = []
     for row in rows:
         r = dict(row)
@@ -83,20 +82,21 @@ def filter_db_records(
         row_core    = r.get("core_highlights", "") or ""
 
         score = 0.0
-        # 地域：权重 2.0，精确优先
-        if region_terms:
-            score += _substring_score(row_region, region_terms) * 2.0
+        # 地域：权重 2.0
+        if country_region.strip():
+            score += _bigram_score(row_region, country_region) * 2.0
         # 风格标签：权重 1.5
-        if style_terms:
-            score += _substring_score(row_style, style_terms) * 1.5
+        if style_tags.strip():
+            score += _bigram_score(row_style, style_tags) * 1.5
         # 内容类型：权重 1.5
-        if content_terms:
-            score += _substring_score(row_content, content_terms) * 1.5
-        # 本场看点内容：匹配 main_content + core_highlights + tags，权重 2.0
-        if live_terms:
+        if content_tags.strip():
+            score += _bigram_score(row_content, content_tags) * 1.5
+        # 本场看点内容：bigram 匹配 main_content + core_highlights + tags，权重 2.5
+        if live_type.strip():
             combined = f"{row_content} {row_style} {row_main} {row_core}"
-            score += _substring_score(combined, live_terms) * 2.0
+            score += _bigram_score(combined, live_type) * 2.5
 
+        r["_match_score"] = round(score, 3)
         results.append((score, r))
 
     results.sort(key=lambda x: x[0], reverse=True)

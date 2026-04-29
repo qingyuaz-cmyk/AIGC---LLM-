@@ -574,12 +574,14 @@ with tab4:
         st.info(f"筛选到 **{len(matched)}** 条热度视频参考（按相似度排序，取前 6 条传给模型）")
 
         if matched:
-            with st.expander("查看匹配到的参考视频", expanded=False):
+            with st.expander("查看匹配到的参考视频", expanded=True):
                 for i, r in enumerate(matched[:6], 1):
+                    score = r.get("_match_score", 0)
                     st.markdown(
                         f"**{i}.** `{r.get('country_region')}` | "
                         f"风格: {r.get('style_type_tags','—')} | "
-                        f"内容: {r.get('content_type_tags','—')}"
+                        f"内容: {r.get('content_type_tags','—')} | "
+                        f"匹配分: **{score}**"
                     )
                     st.caption(r.get("core_highlights", ""))
 
