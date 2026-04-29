@@ -1,0 +1,7 @@
+streamlit
+pandas
+yt-dlp
+openai
+playwright
+requests
+tos

@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  aigc-agent:
+    build: .
+    container_name: aigc_prompt_agent
+    ports:
+      - "8501:8501"
+    volumes:
+      # 持久化：数据库、视频、配置、输出——容器重启不丢数据
+      - ./data:/app/data
+      - ./videos:/app/videos
+      - ./config:/app/config
+      - ./Generated_Prompts:/app/Generated_Prompts
+      - ./temp_creator:/app/temp_creator
+      - ./seedance_output:/app/seedance_output
+    restart: always
+    env_file:
+      - .env          # API key 单独放 .env，不进 git
+    environment:
+      - PYTHONUNBUFFERED=1

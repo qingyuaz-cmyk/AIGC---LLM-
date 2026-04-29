@@ -1,0 +1,9 @@
+.env
+data/
+videos/
+temp_creator/
+seedance_output/
+__pycache__/
+*.pyc
+*.pdf
+.DS_Store

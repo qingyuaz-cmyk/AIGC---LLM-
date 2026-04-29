@@ -1,0 +1,9 @@
+# TikTok English Search Keywords (One per line)
+# Please add the keywords you want to automatically scrape from TikTok
+beautiful streamer
+talent show
+live music performance
+outdoor fashion
+dance trend
+daily vlog
+outfit transition

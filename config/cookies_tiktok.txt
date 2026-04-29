@@ -1,0 +1,32 @@
+# Netscape HTTP Cookie File
+# TikTok Cookie 配置文件
+#
+# ===================== 使用说明 =====================
+# 方法一（推荐）：浏览器扩展
+#   1. Chrome 安装扩展 "Get cookies.txt LOCALLY"（Chrome 商店搜索）
+#   2. 打开并登录 https://www.tiktok.com，确保已登录账号
+#   3. 点击扩展图标 → 选择当前页 → 点击 Export → 复制全部内容
+#   4. 删除此文件中的所有注释行，将复制内容完整粘贴到下方
+#
+# 方法二：从浏览器开发者工具手动提取
+#   1. 登录 TikTok 后，按 F12 → Application → Cookies → www.tiktok.com
+#   2. 关键字段：sessionid, tt_webid, msToken, tiktok_webapp_theme
+#   3. 按 Netscape 格式逐行填写（见下方格式说明）
+#
+# ===================== 格式说明 =====================
+# 每行一条 Cookie，字段之间用【制表符 TAB】分隔：
+# domain  includeSubdomains  path  secure  expiry  name  value
+#
+# 示例（替换 your_value_here 为真实 Cookie 值）：
+# .tiktok.com	TRUE	/	TRUE	1999999999	sessionid	your_value_here
+# .tiktok.com	TRUE	/	FALSE	1999999999	tt_webid	your_value_here
+# .tiktok.com	TRUE	/	FALSE	1999999999	msToken	your_value_here
+# .tiktok.com	TRUE	/	FALSE	1999999999	tiktok_webapp_theme	light
+#
+# ===================== 注意事项 =====================
+# ⚠️ Cookie 有时效性，通常 7-30 天，失效后需重新导出
+# ⚠️ TikTok 需要美国/国际 IP 才能访问，请配合代理使用
+# ⚠️ 请勿将含真实 Cookie 的此文件提交到 git 仓库
+# ⚠️ 建议使用小号，避免主账号因异常登录被封
+#
+# 在此行以下粘贴您的 Cookie 内容：
