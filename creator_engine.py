@@ -42,17 +42,25 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 #  1. DB 筛选
 # ─────────────────────────────────────────────
 
-def _tag_overlap(row_val: str, query: str) -> float:
-    if not query.strip():
-        return 1.0
-    q_terms = set(t.strip() for t in re.split(r"[,，\s、]+", query.lower()) if t.strip())
-    v_terms = set(t.strip() for t in re.split(r"[,，\s、]+", row_val.lower()) if t.strip())
-    if not q_terms:
-        return 1.0
-    return len(q_terms & v_terms) / len(q_terms)
+def _extract_terms(text: str) -> list:
+    """提取长度≥2的有效词条（适配中文逗号/空格/顿号分隔）"""
+    return [t.strip() for t in re.split(r"[,，\s、。！？\|]+", text.lower()) if len(t.strip()) >= 2]
 
 
-def filter_db_records(country_region: str = "", style_tags: str = "", content_tags: str = "") -> list:
+def _substring_score(row_val: str, terms: list) -> float:
+    """用子串匹配代替精确词匹配：'才艺'能命中'才艺展示'，'欧美'能命中'欧美市场'"""
+    if not terms or not row_val:
+        return 0.0
+    row_lower = row_val.lower()
+    return sum(1 for t in terms if t in row_lower) / len(terms)
+
+
+def filter_db_records(
+    country_region: str = "",
+    style_tags: str = "",
+    content_tags: str = "",
+    live_type: str = "",
+) -> list:
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     rows = conn.execute(
@@ -60,14 +68,35 @@ def filter_db_records(country_region: str = "", style_tags: str = "", content_ta
     ).fetchall()
     conn.close()
 
+    region_terms  = _extract_terms(country_region)
+    style_terms   = _extract_terms(style_tags)
+    content_terms = _extract_terms(content_tags)
+    live_terms    = _extract_terms(live_type)
+
     results = []
     for row in rows:
         r = dict(row)
-        score = (
-            _tag_overlap(r.get("country_region", ""),    country_region) * 1.5
-            + _tag_overlap(r.get("style_type_tags", ""),   style_tags)
-            + _tag_overlap(r.get("content_type_tags", ""), content_tags)
-        )
+        row_region  = r.get("country_region", "") or ""
+        row_style   = r.get("style_type_tags", "") or ""
+        row_content = r.get("content_type_tags", "") or ""
+        row_main    = r.get("main_content", "") or ""
+        row_core    = r.get("core_highlights", "") or ""
+
+        score = 0.0
+        # 地域：权重 2.0，精确优先
+        if region_terms:
+            score += _substring_score(row_region, region_terms) * 2.0
+        # 风格标签：权重 1.5
+        if style_terms:
+            score += _substring_score(row_style, style_terms) * 1.5
+        # 内容类型：权重 1.5
+        if content_terms:
+            score += _substring_score(row_content, content_terms) * 1.5
+        # 本场看点内容：匹配 main_content + core_highlights + tags，权重 2.0
+        if live_terms:
+            combined = f"{row_content} {row_style} {row_main} {row_core}"
+            score += _substring_score(combined, live_terms) * 2.0
+
         results.append((score, r))
 
     results.sort(key=lambda x: x[0], reverse=True)

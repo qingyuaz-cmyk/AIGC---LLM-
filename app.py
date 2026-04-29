@@ -556,7 +556,7 @@ with tab4:
 
         # ① 筛选热度视频库
         with st.spinner("从热度视频库中筛选匹配记录…"):
-            matched = filter_db_records(filter_region, filter_style, filter_content)
+            matched = filter_db_records(filter_region, filter_style, filter_content, live_type)
 
         st.info(f"筛选到 **{len(matched)}** 条热度视频参考（按相似度排序，取前 6 条传给模型）")
 
