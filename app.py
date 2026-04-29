@@ -571,17 +571,26 @@ with tab4:
         with st.spinner("从热度视频库中筛选匹配记录…"):
             matched = filter_db_records(filter_region, filter_style, filter_content, live_type)
 
-        st.info(f"筛选到 **{len(matched)}** 条热度视频参考（按相似度排序，取前 6 条传给模型）")
+        _top6       = matched[:6]
+        _top_score  = _top6[0].get("_match_score", 0) if _top6 else 0
+        _high_cnt   = sum(1 for r in matched if r.get("_match_score", 0) >= 1.0)
+        _zero_cnt   = sum(1 for r in matched if r.get("_match_score", 0) == 0)
 
-        if matched:
-            with st.expander("查看匹配到的参考视频", expanded=True):
-                for i, r in enumerate(matched[:6], 1):
+        if _top_score == 0:
+            st.warning(f"⚠️ 库中没有找到与你填写特征高度匹配的视频（前6条得分均为0），建议检查标签填写是否与库内数据一致。将按最新入库顺序返回参考。")
+        else:
+            st.success(f"库中共 **{_high_cnt}** 条高相关（得分≥1.0），取前6条（最高分 **{_top_score}**）传给模型；另有 **{_zero_cnt}** 条完全不相关已排在后面。")
+
+        if _top6:
+            with st.expander("查看前6条匹配参考", expanded=True):
+                for i, r in enumerate(_top6, 1):
                     score = r.get("_match_score", 0)
+                    bar   = "🟢" if score >= 2.0 else ("🟡" if score >= 1.0 else "🔴")
                     st.markdown(
-                        f"**{i}.** `{r.get('country_region')}` | "
+                        f"{bar} **{i}.** `{r.get('country_region')}` | "
                         f"风格: {r.get('style_type_tags','—')} | "
                         f"内容: {r.get('content_type_tags','—')} | "
-                        f"匹配分: **{score}**"
+                        f"得分: **{score}**"
                     )
                     st.caption(r.get("core_highlights", ""))
 
