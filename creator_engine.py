@@ -264,24 +264,38 @@ def generate_recreation_script(
         "严格按系统提示词的 JSON 格式输出二创脚本。"
     )
 
-    response = client.chat.completions.create(
-        model=MODEL_NAME,
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": [
-                {"type": "text", "text": user_text},
-                {"type": "image_url",
-                 "image_url": {"url": f"data:{frame_mime};base64,{frame_b64}"}},
-                {"type": "image_url",
-                 "image_url": {"url": f"data:video/mp4;base64,{video_b64}"}},
-            ]},
-        ],
-        max_tokens=8192,
-        temperature=0.6,
-        extra_headers={"X-TT-LOGID": "creator_recreation_script"},
-        extra_body={"thinking": {"include_thoughts": True, "budget_tokens": 2048}},
-    )
-    return response.choices[0].message.content.strip()
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": [
+            {"type": "text", "text": user_text},
+            {"type": "image_url",
+             "image_url": {"url": f"data:{frame_mime};base64,{frame_b64}"}},
+            {"type": "image_url",
+             "image_url": {"url": f"data:video/mp4;base64,{video_b64}"}},
+        ]},
+    ]
+
+    # 429 限流自动重试：等 15s / 30s / 60s
+    last_err = None
+    for attempt, wait in enumerate([0, 15, 30, 60]):
+        if wait:
+            print(f"    [Gemini] 429 限流，{wait}s 后重试（第 {attempt} 次）...")
+            time.sleep(wait)
+        try:
+            response = client.chat.completions.create(
+                model=MODEL_NAME,
+                messages=messages,
+                max_tokens=8192,
+                temperature=0.6,
+                extra_headers={"X-TT-LOGID": "creator_recreation_script"},
+                extra_body={"thinking": {"include_thoughts": True, "budget_tokens": 2048}},
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            last_err = e
+            if "429" not in str(e):
+                raise  # 非限流错误直接抛出
+    raise last_err
 
 
 def parse_script_json(raw: str) -> dict:

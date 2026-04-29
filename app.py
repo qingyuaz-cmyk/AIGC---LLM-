@@ -618,7 +618,11 @@ with tab4:
                 st.session_state["creator_video_path"]  = video_path
                 st.session_state["creator_n_segments"]  = n_segments
             except Exception as e:
-                st.error(f"Gemini 调用失败：{e}")
+                err_str = str(e)
+                if "429" in err_str:
+                    st.error("Gemini 限流（429）：已自动重试 3 次仍失败。字节内部 Gemini 代理高峰期资源不足，请等几分钟后再试，或申请 PTU/priority paygo 账户。")
+                else:
+                    st.error(f"Gemini 调用失败：{e}")
                 raw_result = None
 
         if raw_result:
