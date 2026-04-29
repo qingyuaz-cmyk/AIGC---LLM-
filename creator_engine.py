@@ -10,6 +10,12 @@ import time
 import requests
 from openai import AzureOpenAI
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
+except ImportError:
+    pass
+
 _PROJ_DIR   = os.path.dirname(os.path.abspath(__file__))
 DB_PATH     = os.path.join(_PROJ_DIR, "data", "videos_db.sqlite")
 CONFIG_DIR  = os.path.join(_PROJ_DIR, "config")

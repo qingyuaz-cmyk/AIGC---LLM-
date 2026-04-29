@@ -3,6 +3,12 @@ import json
 import base64
 from openai import AzureOpenAI
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
+except ImportError:
+    pass
+
 # 优先读取环境变量，方便 Docker/CI 部署时覆盖
 API_KEY    = os.environ.get("AZURE_OPENAI_API_KEY",    "")
 ENDPOINT   = os.environ.get("AZURE_OPENAI_ENDPOINT",   "")
