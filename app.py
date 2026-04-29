@@ -4,6 +4,13 @@ import pandas as pd
 import os
 import time
 import subprocess
+
+# 本地开发：自动加载 .env 文件里的环境变量（Docker 环境直接用系统环境变量）
+try:
+    from dotenv import load_dotenv
+    load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
+except ImportError:
+    pass
 from db_engine import get_all_records, check_video_exists, insert_video_record
 from creator_engine import filter_db_records, get_video_duration, split_video_segments, generate_recreation_script, parse_script_json, call_seedance, run_seedance_batch
 from scraper_engine import download_video

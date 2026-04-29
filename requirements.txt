@@ -5,3 +5,4 @@ openai
 playwright
 requests
 tos
+python-dotenv
