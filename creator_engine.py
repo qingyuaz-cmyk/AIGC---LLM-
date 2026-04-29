@@ -170,34 +170,54 @@ def split_video_segments(video_path: str, segment_duration: int = 15) -> list:
 #  3. Gemini 二创脚本生成
 # ─────────────────────────────────────────────
 
-def _speedup_video(video_path: str, max_duration: float = 60.0) -> str:
-    """Re-encode video to ≤max_duration seconds to stay under Gemini 100 MB limit."""
-    duration = get_video_duration(video_path)
-    if duration <= max_duration:
+def _speedup_video(video_path: str, max_duration: float = 60.0, max_size_mb: float = 10.0) -> str:
+    """
+    Re-encode video for Gemini:
+    - If duration > max_duration: speed up to fit within max_duration
+    - If file size > max_size_mb: re-encode at 1000k regardless of duration
+    Both checks are applied so even a short-but-large file gets compressed.
+    """
+    duration  = get_video_duration(video_path)
+    file_size = os.path.getsize(video_path) / (1024 * 1024)  # MB
+
+    needs_speedup = duration > max_duration
+    needs_compress = file_size > max_size_mb
+
+    if not needs_speedup and not needs_compress:
         return video_path
 
-    speed = duration / max_duration          # e.g. 2.0 for a 120 s video
     out_name = f"gemini_{os.path.basename(video_path)}"
     out_path = os.path.join(TEMP_DIR, out_name)
 
-    # atempo only accepts 0.5–2.0 per filter; chain if speed > 2
-    atempo_parts = []
-    rem = speed
-    while rem > 2.0:
-        atempo_parts.append("atempo=2.0")
-        rem /= 2.0
-    atempo_parts.append(f"atempo={rem:.4f}")
+    if needs_speedup:
+        speed = duration / max_duration
+        atempo_parts = []
+        rem = speed
+        while rem > 2.0:
+            atempo_parts.append("atempo=2.0")
+            rem /= 2.0
+        atempo_parts.append(f"atempo={rem:.4f}")
+        subprocess.run(
+            ["ffmpeg", "-i", video_path,
+             "-vf", f"setpts={1.0/speed:.6f}*PTS",
+             "-af", ",".join(atempo_parts),
+             "-vcodec", "libx264", "-b:v", "1000k",
+             "-acodec", "aac", "-b:a", "64k",
+             "-movflags", "+faststart",
+             out_path, "-y"],
+            capture_output=True, timeout=180,
+        )
+    else:
+        # 只需压缩码率，不改变速度
+        subprocess.run(
+            ["ffmpeg", "-i", video_path,
+             "-vcodec", "libx264", "-b:v", "1000k",
+             "-acodec", "aac", "-b:a", "64k",
+             "-movflags", "+faststart",
+             out_path, "-y"],
+            capture_output=True, timeout=180,
+        )
 
-    subprocess.run(
-        ["ffmpeg", "-i", video_path,
-         "-vf", f"setpts={1.0/speed:.6f}*PTS",
-         "-af", ",".join(atempo_parts),
-         "-vcodec", "libx264", "-b:v", "1000k",
-         "-acodec", "aac", "-b:a", "64k",
-         "-movflags", "+faststart",
-         out_path, "-y"],
-        capture_output=True, timeout=180,
-    )
     return out_path if os.path.exists(out_path) else video_path
 
 
