@@ -243,7 +243,7 @@ def generate_recreation_script(
     frame_ext = os.path.splitext(creator_frame_path)[1].lower()
     frame_mime = "image/png" if frame_ext == ".png" else "image/jpeg"
 
-    video_input_path = _speedup_video(creator_video_path, max_duration=60.0)
+    video_input_path = _speedup_video(creator_video_path, max_duration=15.0)
     with open(video_input_path, "rb") as f:
         video_b64 = base64.b64encode(f.read()).decode()
 
